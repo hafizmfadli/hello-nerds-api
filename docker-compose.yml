@@ -1,0 +1,19 @@
+version: '2'
+services:
+  mysql:
+    image: quay.io/debezium/example-mysql:${DEBEZIUM_VERSION}
+    container_name: hello-nerds-mysqldbz
+    volumes:
+      - ${MYSQL_VOLUME}:/var/lib/mysql
+    ports:
+     - 3307:3306
+    networks:
+      - host
+    environment:
+     - MYSQL_ROOT_PASSWORD=debezium
+     - MYSQL_USER=mysqluser
+     - MYSQL_PASSWORD=mysqlpw
+
+networks:
+  host:
+    driver: bridge 
