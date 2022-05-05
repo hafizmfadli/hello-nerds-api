@@ -43,3 +43,27 @@ func (app *application) listBooksHandler (w http.ResponseWriter, r *http.Request
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) listBookSuggestionsHandler (w http.ResponseWriter, r *http.Request) {
+	// define struct to store query params from request
+	var input struct {
+		Typesearch string
+		data.Filters
+	}
+
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+
+	input.Typesearch = app.readString(qs, "typesearch", "")
+
+	books, err := app.models.Books.GetBookSuggestions(input.Typesearch, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"suggestions": books}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
