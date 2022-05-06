@@ -7,6 +7,10 @@ import (
 )
 
 type Filters struct {
+	Searchword string
+	Author string
+	Extension string
+	Availability int
 	Page int
 	PageSize int
 }
@@ -27,6 +31,17 @@ func ValidateFilters(v *validator.Validator, f Filters) {
 	v.Check(f.PageSize > 0, "page_size", "must be greater than zero")
 	v.Check(f.PageSize <= 100, "page_size", "must be a maximum of 100")
 
+}
+
+func ValidateAdvanceFilters(v *validator.Validator, f Filters) {
+	v.Check(f.Extension == "all" || f.Extension == "pdf" || f.Extension == "epub" || f.Extension == "djvu", "extension", "extension must be pdf, epub, djvu")
+	
+	// filter availability status 
+	// 0 : (no filter)
+	// 1 : in stock
+	// 2 : currently unavailable
+	v.Check(f.Availability >= 0, "availability", "availability status must be greater than zero")
+	v.Check(f.Availability <= 2, "availability", "availability status must be less than two")
 }
 
 // Define a new Metadata struct for holding the pagination metadata.

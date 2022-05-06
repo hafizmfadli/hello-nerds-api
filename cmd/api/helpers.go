@@ -203,3 +203,16 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 
 	return i
 }
+
+// isQueryParamExists helper read URL and check whether particular query param
+// exist or not
+func (app *application) isQueryParamExists (qs url.Values, key string) bool {
+
+	s := qs.Get(key)
+
+	if s == "" {
+		return false
+	}
+
+	return true
+}

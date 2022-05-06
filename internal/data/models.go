@@ -16,8 +16,9 @@ var (
 
 type Models struct {
 	Books interface {
-		GetAll(searchword string, filters Filters) ([]*Book, Metadata, error)
+		GetAll(filters Filters) ([]*Book, Metadata, error)
 		GetBookSuggestions (typeSearch string, filters Filters) ([]*Book, error)
+		AdvanceFilterBooks (filters Filters) ([]*Book, Metadata, error)
 	}
 }
 
