@@ -28,7 +28,7 @@ type BookModel struct {
 	ES *elasticsearch.Client
 }
 
-func (b BookModel) GetAll(searchword string, filters Filters) ([]*Book, Metadata, error) {
+func (b BookModel) GetAll(filters Filters) ([]*Book, Metadata, error) {
 	// Todo : handle search with ISBN, filtering nya apa aja ?
 	query := fmt.Sprintf(`
 	{
@@ -46,7 +46,7 @@ func (b BookModel) GetAll(searchword string, filters Filters) ([]*Book, Metadata
 			}
 		}
 	}	
-	`, filters.offset(), filters.limit(), searchword)
+	`, filters.offset(), filters.limit(), filters.Searchword)
 	
 	res, err := b.ES.Search(
 		b.ES.Search.WithIndex("books-v1"),
@@ -105,6 +105,127 @@ func (b BookModel) GetBookSuggestions (typeSearch string, filters Filters) ([]*B
 	}
 	
 	return results, nil
+}
+
+func (b BookModel) AdvanceFilterBooks (filters Filters) ([]*Book, Metadata, error) {
+	
+	var sb strings.Builder
+	var filtersES []string
+
+	sb.WriteString(fmt.Sprintf(`
+	{
+		"from": %d,
+		"size": %d, 
+		"query": {
+			"bool": {
+				"must": [
+	`, filters.offset(), filters.limit()))
+
+	// filter keyword
+	if filters.Searchword != "" {
+		const searchwordFilter = `
+		"match": {
+			"Searchword": {
+				"query": "%s",
+				"operator": "or",
+				"fuzziness": 1,
+				"prefix_length": 3,
+				"max_expansions": 10
+			}
+		}
+	`
+		filtersES = append(filtersES, fmt.Sprintf(searchwordFilter, filters.Searchword))
+	}
+
+	// filter author
+	if filters.Author != "" {
+		const authorFilter = `
+			"match": {
+				"Author": "%s"
+			}
+		`
+		filtersES = append(filtersES, fmt.Sprintf(authorFilter, filters.Author))
+	}
+
+
+	// filter extension
+	if filters.Extension != "" && filters.Extension != "all" {
+		const extensionFilter = `
+			"match": {
+				"Extension": "%s"
+			}
+		`
+		filtersES = append(filtersES, fmt.Sprintf(extensionFilter, filters.Extension))
+	}
+
+	// filter availability status 
+	// 0 : (no filter)
+	// 1 : in stock
+	// 2 : currently unavailable
+	if filters.Availability > 0 {
+		const availabilityStatusFilter = `
+			"range": {
+				"quantity": {
+					"lte": %d,
+					"gte": %d
+				}
+			}
+		`
+		// In stock
+		if filters.Availability == 1 {
+			filtersES = append(filtersES, fmt.Sprintf(availabilityStatusFilter, 99999999, 1))
+		}
+
+		// Out of stock
+		if filters.Availability == 2 {
+			filtersES = append(filtersES, fmt.Sprintf(availabilityStatusFilter, 0, 0))
+		}
+	}
+
+	if filtersES != nil {
+		for i, filterES := range filtersES {
+			if i > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString("{\n")
+			sb.WriteString(filterES)
+			sb.WriteString("\n}")
+		}
+	} else {
+		const noFilter = `
+			"match_all": {}
+		`
+		sb.WriteString("{\n")
+		sb.WriteString(noFilter)
+		sb.WriteString("\n}")
+	}
+
+	sb.WriteString("\n]")
+	sb.WriteString("\n}")
+	sb.WriteString("\n}")
+	sb.WriteString("\n}")
+
+	fmt.Println(sb.String())
+
+	res, err := b.ES.Search(
+		b.ES.Search.WithIndex("books-v1"),
+		b.ES.Search.WithBody(buildQuery(sb.String())),
+	)
+
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	defer res.Body.Close()
+
+	results, totalRecords, err := b.parseElasticsearchResponse(res)
+
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	return results, metadata, nil
 }
 
 // parseElasticsearchResponse return parsed elasticsearch response, total match document,

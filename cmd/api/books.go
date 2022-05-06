@@ -11,7 +11,6 @@ func (app *application) listBooksHandler (w http.ResponseWriter, r *http.Request
 	// To keep things consistent with our other handlers, we'll define an input struct
 	// to hold the expected values from the request query string
 	var input struct {
-		Searchword string
 		data.Filters
 	}
 
@@ -32,10 +31,36 @@ func (app *application) listBooksHandler (w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	books, metadata, err := app.models.Books.GetAll(input.Searchword, input.Filters)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+	var books []*data.Book
+	var metadata data.Metadata
+	var err error
+
+	// we need to separate basic search and advance filter bcz
+	// they have different elasticsearch query logic
+	if app.isQueryParamExists(qs, "author") || app.isQueryParamExists(qs, "extension") || app.isQueryParamExists(qs, "availability") {
+		// advance filter
+		input.Author = app.readString(qs, "author", "")
+		input.Extension = app.readString(qs, "extension", "all")
+		input.Availability = app.readInt(qs, "availability", 0, v)
+
+		if data.ValidateAdvanceFilters(v, input.Filters); !v.Valid() {
+			app.failedValidationResponse(w, r, v.Errors)
+			return
+		}
+
+		books, metadata, err = app.models.Books.AdvanceFilterBooks(input.Filters)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+
+	} else {
+		// basic search
+		books, metadata, err = app.models.Books.GetAll(input.Filters)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}	
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"books": books, "metadata": metadata}, nil)
