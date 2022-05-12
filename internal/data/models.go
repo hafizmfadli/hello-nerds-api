@@ -19,11 +19,14 @@ type Models struct {
 		GetAll(filters Filters) ([]*Book, Metadata, error)
 		GetBookSuggestions (typeSearch string, filters Filters) ([]*Book, error)
 		AdvanceFilterBooks (filters Filters) ([]*Book, Metadata, error)
+		GetBook(id int64) (*Book, error)
 	}
+	Users UserModel
 }
 
 func NewModel(db *sql.DB, es *elasticsearch.Client) Models {
 	return Models{
 		Books: BookModel{DB: db, ES: es},
+		Users: UserModel{DB: db},
 	}
 }
