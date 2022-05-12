@@ -26,6 +26,9 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthCheckHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/books", app.listBooksHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/books/suggest", app.listBookSuggestionsHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/books/detail/:id", app.showBookHandler)
 
-	return app.enableCORS(router)
+	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
+
+	return app.recoverPanic(app.enableCORS(router)) 
 }
