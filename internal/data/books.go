@@ -1,10 +1,13 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
@@ -21,6 +24,12 @@ type Book struct {
 	Author    *string `json:"author,omitempty"`
 	CoverUrl  *string `json:"coverurl,omitempty"`
 	Extension *string `json:"extension,omitempty"`
+	Year      *string `json:"year,omitempty"`
+	Publisher *string `json:"publisher,omitempty"`
+	Language  *string `json:"language,omitempty"`
+	Identifier *string `json:"identifier,omitempty"`
+	Quantity  int     `json:"quantity,omitempty"`
+	Price     int64   `json:"price,omitempty"`
 }
 
 type BookModel struct {
@@ -226,6 +235,49 @@ func (b BookModel) AdvanceFilterBooks (filters Filters) ([]*Book, Metadata, erro
 	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
 
 	return results, metadata, nil
+}
+
+func (b BookModel) GetBook(id int64) (*Book, error) {
+
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+
+	query := `
+		SELECT id, Title, Author, Coverurl, Extension, Year, Publisher, Language, Identifier, quantity, price
+		FROM updated_edited
+		WHERE id = ?
+	`
+
+	var book Book
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	defer cancel()
+
+	err := b.DB.QueryRowContext(ctx, query, id).Scan(
+		&book.ID,
+		&book.Title,
+		&book.Author,
+		&book.CoverUrl,
+		&book.Extension,
+		&book.Year,
+		&book.Publisher,
+		&book.Language,
+		&book.Identifier,
+		&book.Quantity,
+		&book.Price,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &book, nil
 }
 
 // parseElasticsearchResponse return parsed elasticsearch response, total match document,

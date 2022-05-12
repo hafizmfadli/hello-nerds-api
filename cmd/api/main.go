@@ -14,6 +14,7 @@ import (
 	elasticsearch "github.com/elastic/go-elasticsearch/v7"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hafizmfadli/hello-nerds-api/internal/data"
+	"github.com/hafizmfadli/hello-nerds-api/internal/jsonlog"
 )
 
 const version = "1.0.0"
@@ -29,7 +30,7 @@ type config struct {
 
 type application struct {
 	config config
-	logger *log.Logger
+	logger *jsonlog.Logger
 	models data.Models
 }
 
@@ -45,22 +46,27 @@ func main() {
 	flag.Parse()
 	cfg.es.Addresses = strings.Split(clusterURLs, ",")
 	
-
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	// Initialize a new jsonlog.Logger which writes any messages *at or above* the INFO
+	// severity level to the standard out stream
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
 	// create connection pool
 	db, err := openDB(cfg)
 	if err != nil {
-		logger.Fatal(err)
+		// Use the PrintFatal() method to write a log entry containing the error at the
+		// FATAL level and exit. We have no additional properties to include in the log
+		// entry, so we pass nil as the second parameter
+		logger.PrintFatal(err, nil)
 	}
 	defer db.Close()
 
-	logger.Printf("database connection pool established")
+	// Like wise use PrintInfo() method to write a message at the INFO level
+	logger.PrintInfo("database connection pool established", nil)
 
 	// create es connection
 	es, err := openES(cfg)
 	if err != nil {
-		logger.Fatal(err)
+		logger.PrintFatal(err, nil)
 	}
 
 	// inject all dependencies
@@ -73,14 +79,23 @@ func main() {
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", cfg.port),
 		Handler: app.routes(),
+		// Create a new GO log.Logger instance with the log.New() function, passing in
+		// our custom Logger as the first parameter. The "" and 0 indicate that the
+		// log.Logger instance should not use a prefix or any flags.
+		ErrorLog: log.New(logger, "", 0),
 		IdleTimeout: time.Minute,
 		ReadTimeout: 10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	logger.Printf("starting %s server on %s", cfg.env, srv.Addr)
+	logger.PrintInfo("starting server", map[string]string{
+		"addr": srv.Addr,
+		"env": cfg.env,
+	})
+
 	err = srv.ListenAndServe()
-	log.Fatal(err)
+
+	logger.PrintFatal(err, nil)
 }
 
 // The openDB() function returns a sql.DB connection pool
