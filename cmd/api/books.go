@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/hafizmfadli/hello-nerds-api/internal/data"
@@ -88,6 +89,31 @@ func (app *application) listBookSuggestionsHandler (w http.ResponseWriter, r *ht
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"suggestions": books}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) showBookHandler (w http.ResponseWriter, r *http.Request) {
+
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	book, err := app.models.Books.GetBook(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
