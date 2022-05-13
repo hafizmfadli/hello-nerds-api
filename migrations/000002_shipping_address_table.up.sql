@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS shipping_address (
   phone VARCHAR(20) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   user_id INT,
-  CONSTRAINT fk_user
+  CONSTRAINT fk_shipping_address_users
   FOREIGN KEY (user_id)
-    REFERENCES users(id),
+    REFERENCES users(id)
+    ON DELETE CASCADE,
   PRIMARY KEY (id)
 );
