@@ -6,12 +6,14 @@ import (
 	"flag"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	elasticsearch "github.com/elastic/go-elasticsearch/v7"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hafizmfadli/hello-nerds-api/internal/data"
 	"github.com/hafizmfadli/hello-nerds-api/internal/jsonlog"
+	"github.com/hafizmfadli/hello-nerds-api/internal/mailer"
 )
 
 const version = "1.0.0"
@@ -23,12 +25,21 @@ type config struct {
 		dsn string
 	}
 	es elasticsearch.Config
+	smtp struct {
+		host string
+		port int
+		username string
+		password string
+		sender string
+	}
 }
 
 type application struct {
 	config config
 	logger *jsonlog.Logger
 	models data.Models
+	mailer mailer.Mailer
+	wg sync.WaitGroup
 }
 
 func main() {
@@ -40,6 +51,15 @@ func main() {
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("HELLO_NERDS_DB_DSN"), "MySQL DSN")
 	flag.StringVar(&clusterURLs, "es-cluster-URLs", "http://127.0.0.1:9200", "Elasticsearch Cluster URLs")
+
+	// Read the SMTP server configuration settings into the config struct, using the
+	// Mailtrap settings as the default values.
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp.mailtrap.io", "SMTP host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 587, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", "4252e4b90aa4cd", "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "2924c5b1acf3a9", "SMTP password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Hello Nerds <no-reply@hello.nerds.net>", "SMTP sender")
+
 	flag.Parse()
 	cfg.es.Addresses = strings.Split(clusterURLs, ",")
 	
@@ -71,6 +91,7 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModel(db, es),
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	// Call app.serve() to start the server
