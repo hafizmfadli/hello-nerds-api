@@ -22,11 +22,13 @@ type Models struct {
 		GetBook(id int64) (*Book, error)
 	}
 	Users UserModel
+	Tokens TokenModel
 }
 
 func NewModel(db *sql.DB, es *elasticsearch.Client) Models {
 	return Models{
 		Books: BookModel{DB: db, ES: es},
 		Users: UserModel{DB: db},
+		Tokens: TokenModel{DB: db},
 	}
 }
