@@ -70,6 +70,15 @@ func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Add the "books:read" permission for the new user.
+	// (This is just for testing purpose, In the future we wanna give user permission 
+	// related to cart).
+	err = app.models.Permissions.AddForUser(user.ID, "books:read")
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	// After the user record has been created in the database, generate a new activation
 	// token for the user.
 	token, err := app.models.Tokens.New(user.ID, 3 * 24 * time.Hour, data.ScopeActivation)
