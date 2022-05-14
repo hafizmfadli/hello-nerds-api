@@ -23,6 +23,7 @@ type Models struct {
 	}
 	Users UserModel
 	Tokens TokenModel
+	Permissions PermissionModel
 }
 
 func NewModel(db *sql.DB, es *elasticsearch.Client) Models {
@@ -30,5 +31,6 @@ func NewModel(db *sql.DB, es *elasticsearch.Client) Models {
 		Books: BookModel{DB: db, ES: es},
 		Users: UserModel{DB: db},
 		Tokens: TokenModel{DB: db},
+		Permissions: PermissionModel{DB: db},
 	}
 }

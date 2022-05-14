@@ -1,4 +1,4 @@
-CREATE TABLE `carts` (
+CREATE TABLE IF NOT EXISTS `carts` (
   `id` int NOT NULL AUTO_INCREMENT,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int NOT NULL,
