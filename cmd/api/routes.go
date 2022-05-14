@@ -26,7 +26,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthCheckHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/books", app.listBooksHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/books/suggest", app.listBookSuggestionsHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/books/detail/:id", app.showBookHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/books/detail/:id", app.requirePermission("books:read", app.showBookHandler))
 
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 	router.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
