@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS shipping_address (
   id INT NOT NULL AUTO_INCREMENT,
-  first_name VARCHAR(50) NOT NULL,
-  last_name VARCHAR(50) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
   addresses VARCHAR(255) NOT NULL,
   postal_code VARCHAR(10) NOT NULL,
   province VARCHAR(100) NOT NULL,

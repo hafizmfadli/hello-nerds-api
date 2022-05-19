@@ -26,14 +26,23 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthCheckHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/books", app.listBooksHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/books/suggest", app.listBookSuggestionsHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/books/detail/:id", app.requirePermission("books:read", app.showBookHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/books/detail/:id", app.showBookHandler)
+
+	// router.HandlerFunc(http.MethodGet, "/v1/books/detail/:id", app.requirePermission("books:read", app.showBookHandler))
 
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 	router.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
 
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
 
+	router.HandlerFunc(http.MethodGet, "/v1/provinces", app.listProvincesHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/cities", app.listCitiesHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/districts", app.listDistrictsHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/subdistricts", app.listSubdistrictsHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/postalcode", app.selectPostalCodeHandler)
+
 	router.HandlerFunc(http.MethodPost, "/v1/carts/add-to-cart", app.insertCartHandler)
 
-	return app.recoverPanic(app.enableCORS(app.authenticate(router)))
+
+	return app.recoverPanic(app.enableCORS(app.authenticate(router))) 
 }

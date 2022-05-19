@@ -28,7 +28,7 @@ type Book struct {
 	Publisher *string `json:"publisher,omitempty"`
 	Language  *string `json:"language,omitempty"`
 	Identifier *string `json:"identifier,omitempty"`
-	Quantity  int     `json:"quantity,omitempty"`
+	Quantity  int     `json:"stock,omitempty"`
 	Price     int64   `json:"price,omitempty"`
 }
 
