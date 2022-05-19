@@ -41,6 +41,8 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/subdistricts", app.listSubdistrictsHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/postalcode", app.selectPostalCodeHandler)
 
+	router.HandlerFunc(http.MethodPost, "/v1/carts/add-to-cart", app.insertCartHandler)
+
 
 	return app.recoverPanic(app.enableCORS(app.authenticate(router))) 
 }
