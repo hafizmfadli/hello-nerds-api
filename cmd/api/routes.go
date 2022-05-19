@@ -33,5 +33,7 @@ func (app *application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
 
-	return app.recoverPanic(app.enableCORS(app.authenticate(router))) 
+	router.HandlerFunc(http.MethodPost, "/v1/carts/add-to-cart", app.insertCartHandler)
+
+	return app.recoverPanic(app.enableCORS(app.authenticate(router)))
 }
