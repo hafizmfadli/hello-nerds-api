@@ -24,6 +24,7 @@ type Models struct {
 	Users UserModel
 	Tokens TokenModel
 	Permissions PermissionModel
+	Indonesia IndonesiaModel
 }
 
 func NewModel(db *sql.DB, es *elasticsearch.Client) Models {
@@ -32,5 +33,6 @@ func NewModel(db *sql.DB, es *elasticsearch.Client) Models {
 		Users: UserModel{DB: db},
 		Tokens: TokenModel{DB: db},
 		Permissions: PermissionModel{DB: db},
+		Indonesia: IndonesiaModel{DB: db},
 	}
 }
