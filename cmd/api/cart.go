@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/hafizmfadli/hello-nerds-api/internal/data"
@@ -39,6 +40,31 @@ func (app *application) insertCartHandler(w http.ResponseWriter, r *http.Request
 	// This status code indicates that the request has been accepted for processing, but
 	// the processing has not been completed
 	err = app.writeJSON(w, http.StatusAccepted, envelope{"cart": cart}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) showCartHandler(w http.ResponseWriter, r *http.Request) {
+
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	cartDetails, err := app.models.Carts.GetByUserID(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"carts": cartDetails}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
