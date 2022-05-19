@@ -26,10 +26,6 @@ func (m CartModel) Insert(cart *Cart) error {
 	INSERT INTO carts(user_id, updated_edited_id, quantity, total_price)
 	VALUES(?, ?, ?, (SELECT ? * price total_price FROM updated_edited WHERE id = ?));`
 
-	// query := `
-	// INSERT INTO carts(user_id, updated_edited_id, quantity)
-	// VALUES(?, ?, ?);`
-
 	args := []interface{}{cart.UserID, cart.UpdatedEditedID, cart.Quantity, cart.Quantity, cart.UpdatedEditedID}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
