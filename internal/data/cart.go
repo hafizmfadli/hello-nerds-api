@@ -63,6 +63,39 @@ func (m CartModel) Insert(cart *Cart) error {
 	return nil
 }
 
+// Update the quantity for a specific cart.
+func (m CartModel) UpdateQuantity(cart *Cart) error {
+
+	if cart.ID < 1 {
+		return ErrRecordNotFound
+	}
+
+	query := `
+		UPDATE carts
+		SET quantity = ?
+		WHERE id = ?`
+
+	args := []interface{}{
+		cart.Quantity,
+		cart.ID,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := m.DB.ExecContext(ctx, query, args...)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
+}
+
 // GetByUserID retrieve the cart details from the database based on the user's ID.
 func (m CartModel) GetByUserID(userID int64) (*[]CartDetail, error) {
 
