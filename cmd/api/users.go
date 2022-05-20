@@ -178,3 +178,78 @@ func (app *application) activateUserHandler (w http.ResponseWriter, r *http.Requ
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) checkoutHandler (w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Token                     string                      `json:"token"`
+		Carts                     []*data.Cart                `json:"carts"`
+		OrderShippingAddress      data.ShippingAddress        `json:"shipping_address"`
+		AddressVariety            data.ShippingAddressVariety `json:"address_variety"`
+		CheckoutType              data.CheckoutVariety        `json:"checkout_type"`
+		ExistingShippingAddressId int                         `json:"existing_shipping_address_id"`
+	}
+
+	var err error
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+
+	data.ValidateCheckoutVariety(v, input.CheckoutType)
+	data.ValidateShippingVariety(v, input.AddressVariety)
+	data.ValidateCheckoutAndAddressVarietyPair(v, input.CheckoutType, input.AddressVariety)
+
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	var userID interface{}
+	if input.CheckoutType == data.MemberCheckout {
+		// Validate token only when is member checkout
+		if data.ValidateTokenPlainText(v, input.Token); !v.Valid() {
+			app.failedValidationResponse(w, r, v.Errors)
+			return
+		}
+		
+		user, err := app.models.Users.GetForToken(data.ScopeAuthentication, input.Token)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				v.AddError("token", "invalid (has been expiry or tempered)")
+				app.failedValidationResponse(w, r, v.Errors)
+			default:
+				app.serverErrorResponse(w, r, err)
+			}
+			return
+		}
+
+		userID = user.ID
+	}
+
+	err = app.models.Users.Checkout(&input.OrderShippingAddress, input.AddressVariety, input.CheckoutType, int64(input.ExistingShippingAddressId), 
+	input.Carts, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrNotEnoughStock):
+			v.AddError("available_stock", "not enough")
+			app.failedValidationResponse(w, r, v.Errors)
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("book", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusCreated, envelope{"message": "order created"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
