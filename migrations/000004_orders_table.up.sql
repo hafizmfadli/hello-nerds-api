@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `shipping_address_id` int NOT NULL,
   `is_paid` tinyint(1) NOT NULL DEFAULT '0',
   `payment_deadline` timestamp NOT NULL,
+  `total_price` BIGINT DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_orders_users` (`user_id`),
   KEY `fk_orders_shipping_address` (`shipping_address_id`),

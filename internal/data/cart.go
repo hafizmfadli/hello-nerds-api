@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// UpdatedEditedID is id of book
 type Cart struct {
 	ID              int64     `json:"id"`
 	CreatedAt       time.Time `json:"created_at"`

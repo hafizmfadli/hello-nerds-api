@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS `order_items` (
   `order_id` int NOT NULL,
   `updated_edited_id` int unsigned NOT NULL,
   `quantity` int NOT NULL DEFAULT '0',
+  `total_price` BIGINT DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `fk_order_items_orders` (`order_id`),
   KEY `fk_order_items_updated_edited` (`updated_edited_id`),
