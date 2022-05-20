@@ -12,6 +12,7 @@ import (
 var (
 	ErrRecordNotFound = errors.New("record not found")
 	ErrEditConflict   = errors.New("edit conflict")
+	ErrNotEnoughStock = errors.New("not enough stock")
 )
 
 type Models struct {
