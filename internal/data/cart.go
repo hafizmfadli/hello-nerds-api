@@ -72,11 +72,18 @@ func (m CartModel) UpdateQuantity(cart *Cart) error {
 	}
 
 	query := `
-		UPDATE carts
-		SET quantity = ?
-		WHERE id = ?`
+	UPDATE 
+		carts
+	INNER JOIN 
+		updated_edited ON carts.updated_edited_id = updated_edited.id 
+	SET 
+		carts.quantity = ?, 
+		carts.total_price = ? * updated_edited.price
+	WHERE 
+		carts.id = ?;`
 
 	args := []interface{}{
+		cart.Quantity,
 		cart.Quantity,
 		cart.ID,
 	}
