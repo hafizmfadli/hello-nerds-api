@@ -43,6 +43,7 @@ func (app *application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodPost, "/v1/carts/add-to-cart", app.insertCartHandler)
 
+	router.HandlerFunc(http.MethodPost, "/v1/checkout", app.checkoutHandler)
 
 	return app.recoverPanic(app.enableCORS(app.authenticate(router))) 
 }
