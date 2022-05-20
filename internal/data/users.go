@@ -13,6 +13,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Define a Level type to represent the severity level for a log entry
+type CheckoutVariety int8
+
+// Initialize constants which represent a specific severity level. We use the iota
+// keyword as a shortcut to assign successive integer values to the constants
+const (
+	GuestCheckout CheckoutVariety = iota
+	MemberCheckout
+)
+
 // custom ErrDuplicateEmail error
 var (
 	ErrDuplicateEmail = errors.New("duplicate email")
@@ -108,6 +118,20 @@ func ValidateUser(v *validator.Validator, user *User) {
 	if user.Password.hash == nil {
 		panic("missing password hash for user")
 	}
+}
+
+func ValidateCheckoutVariety(v *validator.Validator, checkoutVariety CheckoutVariety) {
+	v.Check((checkoutVariety == GuestCheckout) || (checkoutVariety == MemberCheckout), "checkout_type", `must be GuestCheckout 
+	or MemberCheckout`)
+}
+
+func ValidateShippingVariety(v *validator.Validator, addressVariety ShippingAddressVariety){
+	v.Check((addressVariety == ToNewAddress) || (addressVariety == ToExistingAddress), "address_variety", `must be to
+	existing address or new address`)
+}
+
+func ValidateCheckoutAndAddressVarietyPair(v *validator.Validator, checkoutVariety CheckoutVariety, addressVariety ShippingAddressVariety){
+	v.Check(!((checkoutVariety == GuestCheckout) && (addressVariety == ToExistingAddress)), "address_variety", "guest checkout must be created new shipping address")
 }
 
 type UserModel struct {
@@ -262,4 +286,119 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 	}
 
 	return &user, nil
+}
+
+// Checkout for checkout product.
+func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety ShippingAddressVariety, checkoutVariety CheckoutVariety, 
+	existingShippingAddressId int64, 
+	carts []*Cart, userID interface{}) (error) {
+	
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
+	defer cancel()
+
+	// BEGIN transactions
+	tx, err := m.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var userId interface{}
+
+	// Check user checkout variety
+	if checkoutVariety == GuestCheckout {
+		userId = nil
+	} else if checkoutVariety == MemberCheckout {
+		userId = userID
+	}
+	
+	var shippingAddressId int64
+
+	// Ship to a new address
+	if addressVariety == ToNewAddress {
+
+		// Create a new row in the shipping_address table
+		result, err := tx.ExecContext(ctx, `INSERT INTO shipping_address(email, first_name, last_name, addresses, postal_code, 
+		province_id, city_id, district_id, subdistrict_id, phone, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?) `, 
+		shippingAddress.Email, shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses, 
+		shippingAddress.PostalCode, shippingAddress.ProvinceID, shippingAddress.CityID, shippingAddress.DistrictID, 
+		shippingAddress.SubdistrictID, shippingAddress.Phone, userId)
+		
+		if err != nil {
+			return err
+		}
+		
+		// use shipping address id that just have created
+		shippingAddressId, err = result.LastInsertId()
+		if err != nil {
+			return err
+		}
+
+	}else if addressVariety == ToExistingAddress {
+		// use exisiting shipping address id
+		shippingAddressId = existingShippingAddressId
+	}
+
+
+	// Create a new row in the orders table
+	result, err := tx.ExecContext(ctx, `INSERT INTO orders(user_id, shipping_address_id, is_paid, payment_deadline, total_price) VALUES(?,?,?,?,?)`,
+								userId, shippingAddressId, false, time.Now().Add(24 * time.Hour), 0)
+	
+	if err != nil {
+		return err
+	}
+
+	orderId, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	var totalOrderPrice int64
+	for _, cart := range carts {
+		// Confirm that book stock is enough for the order.
+		// And perform exclusive lock
+		var enough bool
+		var bookPrice int64
+		if err = tx.QueryRowContext(ctx, "SELECT quantity >= ?, price FROM updated_edited ue WHERE ue.id = ? FOR UPDATE", cart.Quantity, 
+		cart.UpdatedEditedID).Scan(&enough, &bookPrice); err != nil {
+			if err == sql.ErrNoRows {
+				return ErrRecordNotFound
+			}
+			return err
+		}
+
+		if !enough {
+			return ErrNotEnoughStock
+		}
+
+		// Substract book stock with quantity book that user will buy
+		_, err = tx.ExecContext(ctx, "UPDATE updated_edited SET quantity = quantity - ? WHERE id = ?", cart.Quantity, cart.UpdatedEditedID)
+		if err != nil {
+			return err
+		}
+
+		// Insert a row in order_items that point to current order
+		_, err = tx.ExecContext(ctx, "INSERT INTO order_items(order_id, updated_edited_id, quantity, total_price) VALUES(?,?,?,?)", 
+						orderId, cart.UpdatedEditedID, cart.Quantity, cart.Quantity * bookPrice)
+
+		if err != nil {
+			return err
+		}
+
+		// Sum to total order price
+		totalOrderPrice += cart.Quantity * bookPrice
+	}
+
+	// Update order total price
+	_, err = tx.ExecContext(ctx, "UPDATE orders SET total_price = ? WHERE id = ?", totalOrderPrice, orderId)
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction.
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	
+	return nil
 }
