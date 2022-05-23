@@ -4,7 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
+)
+
+// custom ErrDuplicateUserAndBook error
+var (
+	ErrDuplicateUserAndBook = errors.New("duplicate user and book")
 )
 
 // UpdatedEditedID is id of book
@@ -41,16 +49,31 @@ type CartDetail struct {
 func (m CartModel) Insert(cart *Cart) error {
 	query := `
 	INSERT INTO carts(user_id, updated_edited_id, quantity, total_price)
-	VALUES(?, ?, ?, (SELECT ? * price total_price FROM updated_edited WHERE id = ?));`
+	SELECT ?, ?, ?, (SELECT ? * price total_price FROM updated_edited WHERE id = ?)
+	WHERE (SELECT quantity FROM updated_edited WHERE id = ?) >= ?;`
 
-	args := []interface{}{cart.UserID, cart.UpdatedEditedID, cart.Quantity, cart.Quantity, cart.UpdatedEditedID}
+	args := []interface{}{
+		cart.UserID,
+		cart.UpdatedEditedID,
+		cart.Quantity,
+		cart.Quantity,
+		cart.UpdatedEditedID,
+		cart.UpdatedEditedID,
+		cart.Quantity,
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	result, err := m.DB.ExecContext(ctx, query, args...)
 	if err != nil {
-		return err
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1062 && strings.Contains(mysqlErr.Message, "carts.user_updated_edited_unique") {
+				return ErrDuplicateUserAndBook
+			}
+		} else {
+			return err
+		}
 	}
 
 	id, err := result.LastInsertId()
@@ -80,12 +103,13 @@ func (m CartModel) UpdateQuantity(cart *Cart) error {
 		carts.quantity = ?, 
 		carts.total_price = ? * updated_edited.price
 	WHERE 
-		carts.id = ?;`
+		carts.id = ? AND updated_edited.quantity >= ?;`
 
 	args := []interface{}{
 		cart.Quantity,
 		cart.Quantity,
 		cart.ID,
+		cart.Quantity,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
