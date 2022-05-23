@@ -103,12 +103,13 @@ func (m CartModel) UpdateQuantity(cart *Cart) error {
 		carts.quantity = ?, 
 		carts.total_price = ? * updated_edited.price
 	WHERE 
-		carts.id = ?;`
+		carts.id = ? AND updated_edited.quantity >= ?;`
 
 	args := []interface{}{
 		cart.Quantity,
 		cart.Quantity,
 		cart.ID,
+		cart.Quantity,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
