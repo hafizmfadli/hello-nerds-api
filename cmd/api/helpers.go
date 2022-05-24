@@ -203,33 +203,57 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 	return i
 }
 
+// The readInt() helper reads a string value from the query string and converts it to an
+// integer before returning. If no matching key could be found it returns the provided
+// default value. If the value couldn't be converted to an integer, then we record an
+// error message in the provided Validator instance.
+func (app *application) readInt64(qs url.Values, key string, defaultValue int64, v *validator.Validator) int64 {
+	// Extract the value from the query string.
+	s := qs.Get(key)
+
+	// If no key exists (or the value is empty) then return the default value.
+	if s == "" {
+		return defaultValue
+	}
+
+	// Try to convert the value to an int. If this fails, add an error message to the
+	// validator instance and return the default value.
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		v.AddError(key, "must be integer value")
+		return defaultValue
+	}
+
+	return i
+}
+
 // readPositiveInt read a string value from the query string and covert it to an integer and write it to dest.
 // If the value is not positive or couldn't be converted to an integer, then we record an
 // error message in the provided Validator instance.
-func (app *application) readPositiveInt (qs url.Values, key string, dest *int, v *validator.Validator) {
-		// Extract the value from the query string.
-		s := qs.Get(key)
+func (app *application) readPositiveInt(qs url.Values, key string, dest *int, v *validator.Validator) {
+	// Extract the value from the query string.
+	s := qs.Get(key)
 
-		// If no key exists (or the value is empty) then return the default value.
-		if s == "" {
-			v.AddError(key, "can't be empty")
-			return
-		}
-	
-		// Try to convert the value to an int. If this fails, add an error message to the
-		// validator instance and return the default value.
-		i, err := strconv.Atoi(s)
-		if err != nil {
-			v.AddError(key, "must be integer value")
-			return
-		}
+	// If no key exists (or the value is empty) then return the default value.
+	if s == "" {
+		v.AddError(key, "can't be empty")
+		return
+	}
 
-		if i <= 0 {
-			v.AddError(key, "must be greater than zero")
-			return
-		}
-	
-		*dest = i
+	// Try to convert the value to an int. If this fails, add an error message to the
+	// validator instance and return the default value.
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		v.AddError(key, "must be integer value")
+		return
+	}
+
+	if i <= 0 {
+		v.AddError(key, "must be greater than zero")
+		return
+	}
+
+	*dest = i
 }
 
 // isQueryParamExists helper read URL and check whether particular query param
