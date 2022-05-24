@@ -90,10 +90,6 @@ func (m CartModel) Insert(cart *Cart) error {
 // Update the quantity for a specific cart.
 func (m CartModel) UpdateQuantity(cart *Cart) error {
 
-	if cart.ID < 1 {
-		return ErrRecordNotFound
-	}
-
 	query := `
 	UPDATE 
 		carts
@@ -103,12 +99,13 @@ func (m CartModel) UpdateQuantity(cart *Cart) error {
 		carts.quantity = ?, 
 		carts.total_price = ? * updated_edited.price
 	WHERE 
-		carts.id = ? AND updated_edited.quantity >= ?;`
+		carts.user_id = ? AND carts.updated_edited_id = ? AND updated_edited.quantity >= ?;`
 
 	args := []interface{}{
 		cart.Quantity,
 		cart.Quantity,
-		cart.ID,
+		cart.UserID,
+		cart.UpdatedEditedID,
 		cart.Quantity,
 	}
 

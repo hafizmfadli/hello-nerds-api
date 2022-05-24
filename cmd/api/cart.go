@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/hafizmfadli/hello-nerds-api/internal/data"
+	"github.com/hafizmfadli/hello-nerds-api/internal/validator"
 )
 
 func (app *application) insertCartHandler(w http.ResponseWriter, r *http.Request) {
@@ -74,22 +75,23 @@ func (app *application) updateQuantityCartHandler(w http.ResponseWriter, r *http
 
 	// create an anoymous struct to hold the expected data from the request body
 	var input struct {
-		ID       int64 `json:"id"`
-		Quantity int64 `json:"quantity"`
+		UserID          int64 `json:"user_id"`
+		UpdatedEditedID int64 `json:"updated_edited_id"`
+		Quantity        int64 `json:"quantity"`
 	}
 
-	// get id cart from query param
-	id, err := app.readIDParam(r)
+	// Initialize a new Validator instance
+	v := validator.New()
 
-	input.ID = id
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
 
-	if err != nil {
-		app.notFoundResponse(w, r)
-		return
-	}
+	// Use our helpers to extract the query params
+	input.UserID = app.readInt64(qs, "user_id", 1, v)
+	input.UpdatedEditedID = app.readInt64(qs, "updated_edited_id", 1, v)
 
 	// parse the request body into the anonymous struct
-	err = app.readJSON(w, r, &input)
+	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -97,8 +99,9 @@ func (app *application) updateQuantityCartHandler(w http.ResponseWriter, r *http
 
 	// copy the data from the request body into a new Cart struct
 	cart := &data.Cart{
-		ID:       input.ID,
-		Quantity: input.Quantity,
+		UserID:          input.UserID,
+		UpdatedEditedID: input.UpdatedEditedID,
+		Quantity:        input.Quantity,
 	}
 
 	// insert cart data into the database
