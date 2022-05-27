@@ -125,6 +125,33 @@ func (m CartModel) UpdateQuantity(cart *Cart) error {
 	return nil
 }
 
+// Delete a specific cart.
+func (m CartModel) Delete(cart *Cart) error {
+
+	query := `
+	DELETE FROM carts WHERE user_id = ? AND updated_edited_id = ?;`
+
+	args := []interface{}{
+		cart.UserID,
+		cart.UpdatedEditedID,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := m.DB.ExecContext(ctx, query, args...)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
+}
+
 // GetByUserID retrieve the cart details from the database based on the user's ID.
 func (m CartModel) GetByUserID(userID int64) (*[]CartDetail, error) {
 
