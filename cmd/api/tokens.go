@@ -75,3 +75,27 @@ func (app *application) createAuthenticationTokenHandler (w http.ResponseWriter,
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) removeAuthenticationTokenHandler (w http.ResponseWriter, r *http.Request){
+	// Parse the email and password from the request body
+	var input struct {
+		UserID    int64 `json:"user_id"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	err = app.models.Tokens.DeleteAllForUser(data.ScopeAuthentication, input.UserID)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "logout success"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

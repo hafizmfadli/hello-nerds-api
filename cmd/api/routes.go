@@ -47,6 +47,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodDelete, "/v1/carts/delete", app.deleteCartHandler)
 
 	router.HandlerFunc(http.MethodPost, "/v1/checkout", app.checkoutHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/logout", app.requireAuthenticatedUser(app.removeAuthenticationTokenHandler))
 
 	return app.recoverPanic(app.enableCORS(app.authenticate(router)))
 }

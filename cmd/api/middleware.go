@@ -163,6 +163,7 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		// for develepment purpose we allow all header for a while.
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, DELETE, HEAD, OPTIONS, POST, PUT")
 		next.ServeHTTP(w, r)
 	})
 }
