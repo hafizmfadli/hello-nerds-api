@@ -41,11 +41,12 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/subdistricts", app.listSubdistrictsHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/postalcode", app.selectPostalCodeHandler)
 
-	router.HandlerFunc(http.MethodPost, "/v1/carts/add-to-cart", app.insertCartHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/users/:id/cart", app.showCartHandler)
-	router.HandlerFunc(http.MethodPut, "/v1/carts/setQuantity", app.updateQuantityCartHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/carts/add-to-cart", app.requireAuthenticatedUser(app.insertCartHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/users/:id/cart", app.requireAuthenticatedUser(app.showCartHandler))
+	router.HandlerFunc(http.MethodPut, "/v1/carts/setQuantity", app.requireAuthenticatedUser(app.updateQuantityCartHandler))
 
 	router.HandlerFunc(http.MethodPost, "/v1/checkout", app.checkoutHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/logout", app.requireAuthenticatedUser(app.removeAuthenticationTokenHandler))
 
 	return app.recoverPanic(app.enableCORS(app.authenticate(router)))
 }
