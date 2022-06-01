@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -408,12 +407,6 @@ func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety Shi
 func (m UserModel) CheckoutV2(shippingAddress *ShippingAddress, addressVariety ShippingAddressVariety, checkoutVariety CheckoutVariety, 
 	existingShippingAddressId int64, 
 	carts []*Cart, userID interface{}) (error){
-		// Bug : kalo 1 request per waktu aman
-		// tapi kalo concurrent request, hasil si sp nya unexpected
-		// contoh : ada 1 buku , concurrent request 10
-		// expected : 1 request berhasil, 9 gagal
-		// actual : semua berhasil, tapi jumlah stock buku ga berubah
-
 		// prepare book id and book quantity for each book in csv format
 		var bookIds string
 		var bookQuantities string
@@ -431,17 +424,13 @@ func (m UserModel) CheckoutV2(shippingAddress *ShippingAddress, addressVariety S
 			}
 		}
 
-		fmt.Println("book ids ", bookIds)
-		fmt.Println("quantities ", bookQuantities)
-
 		ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
 		defer cancel()
 
-		_, err := m.DB.ExecContext(ctx, "call checkout_v1(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", bookIds, bookQuantities, shippingAddress.Email, 
+		_, err := m.DB.ExecContext(ctx, `call checkout_v5(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, bookIds, bookQuantities, shippingAddress.Email, 
 		shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses, shippingAddress.PostalCode, shippingAddress.ProvinceID,
 		shippingAddress.CityID, shippingAddress.DistrictID, shippingAddress.SubdistrictID, shippingAddress.Phone, userID, checkoutVariety, 
 		addressVariety,existingShippingAddressId)
-
 		if err != nil {
 			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 				if mysqlErr.Number == 1644 && strings.Contains(mysqlErr.Message, "Not enough stock"){
