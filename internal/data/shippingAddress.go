@@ -23,7 +23,7 @@ type ShippingAddress struct {
 	DistrictID    int    `json:"district_id,omitempty"`
 	SubdistrictID int    `json:"subdistrict_id,omitempty"`
 	Phone         string `json:"phone,omitempty"`
-	userID        int    `json:"user_id,omitempty"`
+	UserID        int    `json:"user_id,omitempty"`
 }
 
 type ShippingAddressModel struct {

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -402,3 +403,43 @@ func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety Shi
 	
 	return nil
 }
+
+func (m UserModel) CheckoutV2(shippingAddress *ShippingAddress, addressVariety ShippingAddressVariety, checkoutVariety CheckoutVariety, 
+	existingShippingAddressId int64, 
+	carts []*Cart, userID interface{}) (error){
+		// prepare book id and book quantity for each book in csv format
+		var bookIds string
+		var bookQuantities string
+		l := len(carts)
+		for i := 0; i < l; i++ {
+			bookId := strconv.Itoa(int(carts[i].UpdatedEditedID))
+			bookIds += bookId
+
+			bookQuantity := strconv.Itoa(int(carts[i].Quantity))
+			bookQuantities += bookQuantity
+
+			if i != (l - 1) {
+				bookIds += ","
+				bookQuantities += ","
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+		defer cancel()
+
+		_, err := m.DB.ExecContext(ctx, `call checkout_v5(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, bookIds, bookQuantities, shippingAddress.Email, 
+		shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses, shippingAddress.PostalCode, shippingAddress.ProvinceID,
+		shippingAddress.CityID, shippingAddress.DistrictID, shippingAddress.SubdistrictID, shippingAddress.Phone, userID, checkoutVariety, 
+		addressVariety,existingShippingAddressId)
+		if err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				if mysqlErr.Number == 1644 && strings.Contains(mysqlErr.Message, "Not enough stock"){
+					return ErrNotEnoughStock
+				}
+			}else {
+				return err
+			}
+		}
+
+		return nil
+	}

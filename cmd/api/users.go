@@ -231,7 +231,7 @@ func (app *application) checkoutHandler (w http.ResponseWriter, r *http.Request)
 		userID = user.ID
 	}
 
-	err = app.models.Users.Checkout(&input.OrderShippingAddress, input.AddressVariety, input.CheckoutType, int64(input.ExistingShippingAddressId), 
+	err = app.models.Users.CheckoutV2(&input.OrderShippingAddress, input.AddressVariety, input.CheckoutType, int64(input.ExistingShippingAddressId), 
 	input.Carts, userID)
 	if err != nil {
 		switch {
