@@ -49,7 +49,7 @@ func (u *User) IsAnonymous() bool {
 
 type password struct {
 	plainText *string
-	hash []byte
+	hash      []byte
 }
 
 // The Set() method calculates the bcrypt hash of a plaintext password, and
@@ -81,18 +81,18 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 	return true, nil
 }
 
-func ValidateEmail (v *validator.Validator, email string) {
+func ValidateEmail(v *validator.Validator, email string) {
 	v.Check(email != "", "email", "must be provided")
 	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid ")
 }
 
-func ValidatePasswordPlaintext (v *validator.Validator, password string) {
+func ValidatePasswordPlaintext(v *validator.Validator, password string) {
 	v.Check(password != "", "password", "must be provided")
 	v.Check(len(password) >= 8, "password", "must be at least 8 bytes long")
 	v.Check(len(password) <= 72, "password", "must not be more than 72 bytes long")
 }
 
-func ValidateConfirmPassword (v *validator.Validator, password, confirmPassword string) {
+func ValidateConfirmPassword(v *validator.Validator, password, confirmPassword string) {
 	v.Check(password == confirmPassword, "confirm_password", "must be same as password")
 }
 
@@ -126,12 +126,12 @@ func ValidateCheckoutVariety(v *validator.Validator, checkoutVariety CheckoutVar
 	or MemberCheckout`)
 }
 
-func ValidateShippingVariety(v *validator.Validator, addressVariety ShippingAddressVariety){
+func ValidateShippingVariety(v *validator.Validator, addressVariety ShippingAddressVariety) {
 	v.Check((addressVariety == ToNewAddress) || (addressVariety == ToExistingAddress), "address_variety", `must be to
 	existing address or new address`)
 }
 
-func ValidateCheckoutAndAddressVarietyPair(v *validator.Validator, checkoutVariety CheckoutVariety, addressVariety ShippingAddressVariety){
+func ValidateCheckoutAndAddressVarietyPair(v *validator.Validator, checkoutVariety CheckoutVariety, addressVariety ShippingAddressVariety) {
 	v.Check(!((checkoutVariety == GuestCheckout) && (addressVariety == ToExistingAddress)), "address_variety", "guest checkout must be created new shipping address")
 }
 
@@ -145,19 +145,19 @@ func (m UserModel) Insert(user *User) error {
 	query := `
 		INSERT INTO users (first_name, last_name, email, password_hash)
 		VALUES (?, ?, ?, ?)`
-	
+
 	args := []interface{}{user.FirstName, user.LastName, user.Email, user.Password.hash}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	result, err := m.DB.ExecContext(ctx, query, args...)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-			if mysqlErr.Number == 1062 && strings.Contains(mysqlErr.Message, "users.email"){
+			if mysqlErr.Number == 1062 && strings.Contains(mysqlErr.Message, "users.email") {
 				return ErrDuplicateEmail
 			}
-		}else {
+		} else {
 			return err
 		}
 	}
@@ -180,10 +180,10 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 		SELECT id, created_at, first_name, last_name, email, password_hash, activated
 		FROM users
 		WHERE email = ?`
-	
+
 	var user User
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, email).Scan(
@@ -209,12 +209,12 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 }
 
 // Update the details for a specific user.
-func (m UserModel) Update (user *User) error {
+func (m UserModel) Update(user *User) error {
 	query := `
 		UPDATE users
 		SET first_name = ?, last_name = ?, email = ?, password_hash = ?, activated = ?
 		WHERE id = ?`
-	
+
 	args := []interface{}{
 		user.FirstName,
 		user.LastName,
@@ -224,16 +224,16 @@ func (m UserModel) Update (user *User) error {
 		user.ID,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	_, err := m.DB.ExecContext(ctx, query, args...)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-			if mysqlErr.Number == 1062 && strings.Contains(mysqlErr.Message, "users.email"){
+			if mysqlErr.Number == 1062 && strings.Contains(mysqlErr.Message, "users.email") {
 				return ErrDuplicateEmail
 			}
-		}else {
+		} else {
 			switch {
 			case errors.Is(err, sql.ErrNoRows):
 				return ErrEditConflict
@@ -259,12 +259,12 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 		WHERE tokens.hash = ?
 		AND tokens.scope = ?
 		AND tokens.expiry > ?`
-	
+
 	args := []interface{}{tokenHash[:], tokenScope, time.Now()}
 
 	var user User
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(
@@ -290,11 +290,11 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 }
 
 // Checkout for checkout product.
-func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety ShippingAddressVariety, checkoutVariety CheckoutVariety, 
-	existingShippingAddressId int64, 
-	carts []*Cart, userID interface{}) (error) {
-	
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
+func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety ShippingAddressVariety, checkoutVariety CheckoutVariety,
+	existingShippingAddressId int64,
+	carts []*Cart, userID interface{}) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	// BEGIN transactions
@@ -312,7 +312,7 @@ func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety Shi
 	} else if checkoutVariety == MemberCheckout {
 		userId = userID
 	}
-	
+
 	var shippingAddressId int64
 
 	// Ship to a new address
@@ -320,31 +320,30 @@ func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety Shi
 
 		// Create a new row in the shipping_address table
 		result, err := tx.ExecContext(ctx, `INSERT INTO shipping_address(email, first_name, last_name, addresses, postal_code, 
-		province_id, city_id, district_id, subdistrict_id, phone, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?) `, 
-		shippingAddress.Email, shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses, 
-		shippingAddress.PostalCode, shippingAddress.ProvinceID, shippingAddress.CityID, shippingAddress.DistrictID, 
-		shippingAddress.SubdistrictID, shippingAddress.Phone, userId)
-		
+		province_id, city_id, district_id, subdistrict_id, phone, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?) `,
+			shippingAddress.Email, shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses,
+			shippingAddress.PostalCode, shippingAddress.ProvinceID, shippingAddress.CityID, shippingAddress.DistrictID,
+			shippingAddress.SubdistrictID, shippingAddress.Phone, userId)
+
 		if err != nil {
 			return err
 		}
-		
+
 		// use shipping address id that just have created
 		shippingAddressId, err = result.LastInsertId()
 		if err != nil {
 			return err
 		}
 
-	}else if addressVariety == ToExistingAddress {
+	} else if addressVariety == ToExistingAddress {
 		// use exisiting shipping address id
 		shippingAddressId = existingShippingAddressId
 	}
 
-
 	// Create a new row in the orders table
 	result, err := tx.ExecContext(ctx, `INSERT INTO orders(user_id, shipping_address_id, is_paid, payment_deadline, total_price) VALUES(?,?,?,?,?)`,
-								userId, shippingAddressId, false, time.Now().Add(24 * time.Hour), 0)
-	
+		userId, shippingAddressId, false, time.Now().Add(24*time.Hour), 0)
+
 	if err != nil {
 		return err
 	}
@@ -360,8 +359,8 @@ func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety Shi
 		// And perform exclusive lock
 		var enough bool
 		var bookPrice int64
-		if err = tx.QueryRowContext(ctx, "SELECT quantity >= ?, price FROM updated_edited ue WHERE ue.id = ? FOR UPDATE", cart.Quantity, 
-		cart.UpdatedEditedID).Scan(&enough, &bookPrice); err != nil {
+		if err = tx.QueryRowContext(ctx, "SELECT quantity >= ?, price FROM updated_edited ue WHERE ue.id = ? FOR UPDATE", cart.Quantity,
+			cart.UpdatedEditedID).Scan(&enough, &bookPrice); err != nil {
 			if err == sql.ErrNoRows {
 				return ErrRecordNotFound
 			}
@@ -379,8 +378,8 @@ func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety Shi
 		}
 
 		// Insert a row in order_items that point to current order
-		_, err = tx.ExecContext(ctx, "INSERT INTO order_items(order_id, updated_edited_id, quantity, total_price) VALUES(?,?,?,?)", 
-						orderId, cart.UpdatedEditedID, cart.Quantity, cart.Quantity * bookPrice)
+		_, err = tx.ExecContext(ctx, "INSERT INTO order_items(order_id, updated_edited_id, quantity, total_price) VALUES(?,?,?,?)",
+			orderId, cart.UpdatedEditedID, cart.Quantity, cart.Quantity*bookPrice)
 
 		if err != nil {
 			return err
@@ -400,46 +399,65 @@ func (m UserModel) Checkout(shippingAddress *ShippingAddress, addressVariety Shi
 	if err = tx.Commit(); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
-func (m UserModel) CheckoutV2(shippingAddress *ShippingAddress, addressVariety ShippingAddressVariety, checkoutVariety CheckoutVariety, 
-	existingShippingAddressId int64, 
-	carts []*Cart, userID interface{}) (error){
-		// prepare book id and book quantity for each book in csv format
-		var bookIds string
-		var bookQuantities string
-		l := len(carts)
-		for i := 0; i < l; i++ {
-			bookId := strconv.Itoa(int(carts[i].UpdatedEditedID))
-			bookIds += bookId
+func (m UserModel) CheckoutV2(shippingAddress *ShippingAddress, addressVariety ShippingAddressVariety, checkoutVariety CheckoutVariety,
+	existingShippingAddressId int64,
+	carts []*Cart, userID interface{}) error {
+	// prepare book id and book quantity for each book in csv format
+	var bookIds string
+	var bookQuantities string
+	l := len(carts)
+	for i := 0; i < l; i++ {
+		bookId := strconv.Itoa(int(carts[i].UpdatedEditedID))
+		bookIds += bookId
 
-			bookQuantity := strconv.Itoa(int(carts[i].Quantity))
-			bookQuantities += bookQuantity
+		bookQuantity := strconv.Itoa(int(carts[i].Quantity))
+		bookQuantities += bookQuantity
 
-			if i != (l - 1) {
-				bookIds += ","
-				bookQuantities += ","
-			}
+		if i != (l - 1) {
+			bookIds += ","
+			bookQuantities += ","
 		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
-		defer cancel()
-
-		_, err := m.DB.ExecContext(ctx, `call checkout_v5(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, bookIds, bookQuantities, shippingAddress.Email, 
-		shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses, shippingAddress.PostalCode, shippingAddress.ProvinceID,
-		shippingAddress.CityID, shippingAddress.DistrictID, shippingAddress.SubdistrictID, shippingAddress.Phone, userID, checkoutVariety, 
-		addressVariety,existingShippingAddressId)
-		if err != nil {
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-				if mysqlErr.Number == 1644 && strings.Contains(mysqlErr.Message, "Not enough stock"){
-					return ErrNotEnoughStock
-				}
-			}else {
-				return err
-			}
-		}
-
-		return nil
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := m.DB.ExecContext(ctx, `call checkout_v5(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, bookIds, bookQuantities, shippingAddress.Email,
+		shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses, shippingAddress.PostalCode, shippingAddress.ProvinceID,
+		shippingAddress.CityID, shippingAddress.DistrictID, shippingAddress.SubdistrictID, shippingAddress.Phone, userID, checkoutVariety,
+		addressVariety, existingShippingAddressId)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1644 && strings.Contains(mysqlErr.Message, "Not enough stock") {
+				return ErrNotEnoughStock
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m UserModel) UpdateBookStock(bookID int64, quantity int) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := m.DB.ExecContext(ctx, `call update_stock_v1(?,?)`, bookID, quantity)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1644 && strings.Contains(mysqlErr.Message, "The new quantity is below 0") {
+				return ErrQuantityBelowMinimum
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}

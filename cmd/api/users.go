@@ -9,7 +9,7 @@ import (
 	"github.com/hafizmfadli/hello-nerds-api/internal/validator"
 )
 
-func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Request) {
+func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	// create an anoymous struct to hold the expected data from the request body
 	var input struct {
 		FirstName       string `json:"first_name"`
@@ -29,8 +29,8 @@ func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Requ
 	// copy the data from the request body into a new User struct
 	user := &data.User{
 		FirstName: input.FirstName,
-		LastName: input.LastName,
-		Email: input.Email,
+		LastName:  input.LastName,
+		Email:     input.Email,
 		Activated: false,
 	}
 
@@ -59,8 +59,8 @@ func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Requ
 	err = app.models.Users.Insert(user)
 	if err != nil {
 		switch {
-			// if we get a ErrDuplicateEmail error, use the v.AddError() method to manually
-			// add a message to the validator instance
+		// if we get a ErrDuplicateEmail error, use the v.AddError() method to manually
+		// add a message to the validator instance
 		case errors.Is(err, data.ErrDuplicateEmail):
 			v.AddError("email", "a user with this email address already exists")
 			app.failedValidationResponse(w, r, v.Errors)
@@ -71,7 +71,7 @@ func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Requ
 	}
 
 	// Add the "books:read" permission for the new user.
-	// (This is just for testing purpose, In the future we wanna give user permission 
+	// (This is just for testing purpose, In the future we wanna give user permission
 	// related to cart).
 	err = app.models.Permissions.AddForUser(user.ID, "books:read")
 	if err != nil {
@@ -81,7 +81,7 @@ func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Requ
 
 	// After the user record has been created in the database, generate a new activation
 	// token for the user.
-	token, err := app.models.Tokens.New(user.ID, 3 * 24 * time.Hour, data.ScopeActivation)
+	token, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -96,8 +96,8 @@ func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Requ
 		// with their ID
 		data := map[string]interface{}{
 			"activationToken": token.Plaintext,
-			"userID": user.ID,
-		} 
+			"userID":          user.ID,
+		}
 
 		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
 		if err != nil {
@@ -114,7 +114,7 @@ func (app *application) registerUserHandler (w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (app *application) activateUserHandler (w http.ResponseWriter, r *http.Request) {
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the plaintext activation token from the request body
 	var input struct {
 		TokenPlaintext string `json:"token"`
@@ -179,7 +179,7 @@ func (app *application) activateUserHandler (w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (app *application) checkoutHandler (w http.ResponseWriter, r *http.Request) {
+func (app *application) checkoutHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Token                     string                      `json:"token"`
 		Carts                     []*data.Cart                `json:"carts"`
@@ -215,7 +215,7 @@ func (app *application) checkoutHandler (w http.ResponseWriter, r *http.Request)
 			app.failedValidationResponse(w, r, v.Errors)
 			return
 		}
-		
+
 		user, err := app.models.Users.GetForToken(data.ScopeAuthentication, input.Token)
 		if err != nil {
 			switch {
@@ -231,8 +231,8 @@ func (app *application) checkoutHandler (w http.ResponseWriter, r *http.Request)
 		userID = user.ID
 	}
 
-	err = app.models.Users.CheckoutV2(&input.OrderShippingAddress, input.AddressVariety, input.CheckoutType, int64(input.ExistingShippingAddressId), 
-	input.Carts, userID)
+	err = app.models.Users.CheckoutV2(&input.OrderShippingAddress, input.AddressVariety, input.CheckoutType, int64(input.ExistingShippingAddressId),
+		input.Carts, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrNotEnoughStock):
@@ -253,3 +253,36 @@ func (app *application) checkoutHandler (w http.ResponseWriter, r *http.Request)
 	}
 }
 
+func (app *application) updateBookStockHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		BookID   int64 `json:"book_id"`
+		Quantity int   `json:"quantity"`
+	}
+
+	var err error
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+
+	err = app.models.Users.UpdateBookStock(input.BookID, input.Quantity)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrQuantityBelowMinimum):
+			v.AddError("quantity", "below minimum")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusCreated, envelope{"message": "book stock updated"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
