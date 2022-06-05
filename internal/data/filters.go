@@ -13,6 +13,7 @@ type Filters struct {
 	Availability int
 	Page int
 	PageSize int
+	ISBN string
 }
 
 

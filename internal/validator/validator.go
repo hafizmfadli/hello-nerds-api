@@ -1,6 +1,10 @@
 package validator
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/go-playground/validator/v10"
+)
 
 // Declare a regular expression for sanity checking the format of email addresses (we'll
 // use this later in the book). If you're interested, this regular expression pattern is
@@ -19,6 +23,12 @@ type Validator struct {
 // New is a helper which creates a new Validator instance with an empty errors map.
 func New() *Validator {
 	return &Validator{Errors: make(map[string]string)}
+}
+
+// NewGoPlayground return validator from go playground (3rd party)
+// visit their repository https://github.com/go-playground/validator
+func NewGoPlayground() *validator.Validate {
+	return validator.New()
 }
 
 // Valid returns true if the errors map doesn't contain any entries.
