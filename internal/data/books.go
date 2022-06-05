@@ -149,20 +149,32 @@ func (b BookModel) AdvanceFilterBooks (filters Filters) ([]*Book, Metadata, erro
 				"must": [
 	`, filters.offset(), filters.limit()))
 
-	// filter keyword
-	if filters.Searchword != "" {
-		const searchwordFilter = `
-		"match": {
-			"Searchword": {
-				"query": "%s",
-				"operator": "or",
-				"fuzziness": 1,
-				"prefix_length": 3,
-				"max_expansions": 10
+	if filters.ISBN == "" {
+		// filter keyword
+		if filters.Searchword != "" {
+			const searchwordFilter = `
+			"match": {
+				"Searchword": {
+					"query": "%s",
+					"operator": "or",
+					"fuzziness": 1,
+					"prefix_length": 3,
+					"max_expansions": 10
+				}
 			}
+		`
+			filtersES = append(filtersES, fmt.Sprintf(searchwordFilter, filters.Searchword))
 		}
-	`
-		filtersES = append(filtersES, fmt.Sprintf(searchwordFilter, filters.Searchword))
+	}else {
+		const isbnFilter = `
+			"match": {
+				"Identifier": { 
+					"query": "%s",
+					"minimum_should_match": "100%%"
+				}
+			}
+		`
+			filtersES = append(filtersES, fmt.Sprintf(isbnFilter, filters.ISBN))
 	}
 
 	// filter author
