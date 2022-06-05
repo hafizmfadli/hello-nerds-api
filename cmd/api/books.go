@@ -25,6 +25,7 @@ func (app *application) listBooksHandler (w http.ResponseWriter, r *http.Request
 	input.Searchword = app.readString(qs, "searchword", "")
 	input.Page = app.readInt(qs, "page", 1, v)
 	input.PageSize = app.readInt(qs, "page_size", 24, v)
+	input.ISBN = app.readString(qs, "isbn", "")
 
 	// execute validation check on the Filters struct
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
@@ -35,6 +36,17 @@ func (app *application) listBooksHandler (w http.ResponseWriter, r *http.Request
 	var books []*data.Book
 	var metadata data.Metadata
 	var err error
+
+	// validate book isbn (with 3rd party bcz i'm lazy to write on my own)
+	// if isbn is not valid then set isbn value to empty string. This will 
+	// determined query that will be used to query the books. (if isbn valid
+	// we will only query identifier field on Elasticsearch, otherwise we
+	// are going to use searchword field for query)
+	thirdPartyValidator := validator.NewGoPlayground()
+	err = thirdPartyValidator.Var(input.ISBN, "isbn")
+	if err != nil {
+		input.ISBN = ""
+	}
 
 	// we need to separate basic search and advance filter bcz
 	// they have different elasticsearch query logic
