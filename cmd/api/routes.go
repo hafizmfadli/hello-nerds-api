@@ -44,7 +44,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/carts/add-to-cart", app.insertCartHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/users/:id/cart", app.showCartHandler)
 	router.HandlerFunc(http.MethodPut, "/v1/carts/setQuantity", app.updateQuantityCartHandler)
-	router.HandlerFunc(http.MethodDelete, "/v1/carts/delete", app.deleteCartHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/carts/delete", app.requireAuthenticatedUser(app.deleteCartHandler))
 
 	router.HandlerFunc(http.MethodPost, "/v1/checkout", app.checkoutHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/logout", app.requireAuthenticatedUser(app.removeAuthenticationTokenHandler))

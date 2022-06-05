@@ -39,23 +39,42 @@ type BookModel struct {
 
 func (b BookModel) GetAll(filters Filters) ([]*Book, Metadata, error) {
 	// Todo : handle search with ISBN, filtering nya apa aja ?
-	query := fmt.Sprintf(`
-	{
-		"from": %d,
-		"size": %d,
-		"query": {
-			"match": {
-				"Searchword": {
-					"query": "%s",
-					"operator": "or",
-					"fuzziness": 1,
-					"prefix_length": 3,
-					"max_expansions": 10
+	var query string
+	if filters.ISBN == "" {
+		query = fmt.Sprintf(`
+		{
+			"from": %d,
+			"size": %d,
+			"query": {
+				"match": {
+					"Searchword": {
+						"query": "%s",
+						"operator": "or",
+						"fuzziness": 1,
+						"prefix_length": 3,
+						"max_expansions": 10
+					}
+				}
+			}
+		}	
+		`, filters.offset(), filters.limit(), filters.Searchword)
+	}else {
+		query = fmt.Sprintf(`
+		{
+			"from": %d,
+			"size": %d,
+			"query": {
+				"match": {
+					"Identifier": { 
+						"query": "%s",
+						"minimum_should_match": "100%%"
+					}
 				}
 			}
 		}
-	}	
-	`, filters.offset(), filters.limit(), filters.Searchword)
+		`, filters.offset(), filters.limit(), filters.ISBN)
+	}
+
 	
 	res, err := b.ES.Search(
 		b.ES.Search.WithIndex("books-v1"),
