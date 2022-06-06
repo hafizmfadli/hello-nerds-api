@@ -10,9 +10,10 @@ import (
 // Define a custom ErrRecordNotFound error. We'll return this from our Get() method when
 // looking up a movie that doesn't exist in our database.
 var (
-	ErrRecordNotFound = errors.New("record not found")
-	ErrEditConflict   = errors.New("edit conflict")
-	ErrNotEnoughStock = errors.New("not enough stock")
+	ErrRecordNotFound       = errors.New("record not found")
+	ErrEditConflict         = errors.New("edit conflict")
+	ErrNotEnoughStock       = errors.New("not enough stock")
+	ErrQuantityBelowMinimum = errors.New("the new quantity is below 0")
 )
 
 type Models struct {
@@ -25,7 +26,7 @@ type Models struct {
 	Users       UserModel
 	Tokens      TokenModel
 	Permissions PermissionModel
-	Indonesia IndonesiaModel
+	Indonesia   IndonesiaModel
 	Carts       CartModel
 }
 
@@ -35,7 +36,7 @@ func NewModel(db *sql.DB, es *elasticsearch.Client) Models {
 		Users:       UserModel{DB: db},
 		Tokens:      TokenModel{DB: db},
 		Permissions: PermissionModel{DB: db},
-		Indonesia: IndonesiaModel{DB: db},
+		Indonesia:   IndonesiaModel{DB: db},
 		Carts:       CartModel{DB: db},
 	}
 }
