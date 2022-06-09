@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -137,6 +138,7 @@ func ValidateCheckoutAndAddressVarietyPair(v *validator.Validator, checkoutVarie
 
 type UserModel struct {
 	DB *sql.DB
+	adminUpdated int
 }
 
 // Insert an new record in the database for the user. Note that the id, created_at, and activated
@@ -422,11 +424,13 @@ func (m UserModel) CheckoutV2(shippingAddress *ShippingAddress, addressVariety S
 			bookQuantities += ","
 		}
 	}
+	fmt.Println("book ids: ", bookIds)
+	fmt.Println("quantities: ", bookQuantities)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	_, err := m.DB.ExecContext(ctx, `call checkout_v5(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, bookIds, bookQuantities, shippingAddress.Email,
+	_, err := m.DB.ExecContext(ctx, `call checkout_v6(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, bookIds, bookQuantities, shippingAddress.Email,
 		shippingAddress.FirstName, shippingAddress.LastName, shippingAddress.Addresses, shippingAddress.PostalCode, shippingAddress.ProvinceID,
 		shippingAddress.CityID, shippingAddress.DistrictID, shippingAddress.SubdistrictID, shippingAddress.Phone, userID, checkoutVariety,
 		addressVariety, existingShippingAddressId)
@@ -457,6 +461,87 @@ func (m UserModel) UpdateBookStock(bookID int64, quantity int) error {
 		} else {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m UserModel) UpdateBookStockV2(bookID int64, quantity int) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := m.DB.ExecContext(ctx, `call update_stock_v2(?,?)`, bookID, quantity)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1644 && strings.Contains(mysqlErr.Message, "The new quantity is below 0") {
+				return ErrQuantityBelowMinimum
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m UserModel) UpdateBookStockV3(bookID int64, quantity int) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := m.DB.ExecContext(ctx, `call update_stock_v3(?,?)`, bookID, quantity)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1644 && strings.Contains(mysqlErr.Message, "The new quantity is below 0") {
+				return ErrQuantityBelowMinimum
+			}
+		} else {
+			return err
+		}
+	}
+	
+	m.adminUpdated++
+	fmt.Println("EXECUTE UPDATE STOCK PROCEDURE SUCCESS: ", m.adminUpdated)
+
+	return nil
+}
+
+func (m UserModel) UpdateBookStockV4(bookID int64, quantity int) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// BEGIN transactions
+	tx, err := m.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+
+	var bookStock int
+	// lock selected book. (row level with exclusive lock)
+	if err = tx.QueryRowContext(ctx, "SELECT quantity FROM updated_edited ue WHERE ue.id = ? FOR UPDATE", 
+	bookID).Scan(&bookStock); err != nil {
+		if err == sql.ErrNoRows{
+			return ErrRecordNotFound
+		}
+		return err
+	}
+
+	if bookStock + quantity >= 0 {
+		newStock := bookStock + quantity
+		_, err := tx.ExecContext(ctx, "UPDATE updated_edited ue SET ue.quantity = ? WHERE ue.id = ?", newStock, bookID)
+		if err != nil {
+			return err
+		}
+	}else {
+		return ErrQuantityBelowMinimum
+	}
+
+	// Commit the transaction.
+	if err = tx.Commit(); err != nil {
+		return err
 	}
 
 	return nil

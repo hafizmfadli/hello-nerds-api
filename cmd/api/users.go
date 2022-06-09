@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -190,7 +191,6 @@ func (app *application) checkoutHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var err error
-
 	err = app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
@@ -247,6 +247,9 @@ func (app *application) checkoutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	app.temp.checkoutCounter++
+	fmt.Println("TOTAL CHECKOUT REQUEST : ", app.temp.checkoutCounter)
+
 	err = app.writeJSON(w, http.StatusCreated, envelope{"message": "order created"}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -260,7 +263,6 @@ func (app *application) updateBookStockHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	var err error
-
 	err = app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
@@ -269,7 +271,7 @@ func (app *application) updateBookStockHandler(w http.ResponseWriter, r *http.Re
 
 	v := validator.New()
 
-	err = app.models.Users.UpdateBookStock(input.BookID, input.Quantity)
+	err = app.models.Users.UpdateBookStockV3(input.BookID, input.Quantity)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrQuantityBelowMinimum):
@@ -280,6 +282,9 @@ func (app *application) updateBookStockHandler(w http.ResponseWriter, r *http.Re
 		}
 		return
 	}
+
+	app.temp.adminUpdateCounter++
+	fmt.Println("TOTAL ADMIN UPDATED: ", app.temp.adminUpdateCounter)
 
 	err = app.writeJSON(w, http.StatusCreated, envelope{"message": "book stock updated"}, nil)
 	if err != nil {

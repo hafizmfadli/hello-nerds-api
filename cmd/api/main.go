@@ -40,6 +40,10 @@ type application struct {
 	models data.Models
 	mailer mailer.Mailer
 	wg sync.WaitGroup
+	temp struct {
+		checkoutCounter int
+		adminUpdateCounter int
+	}
 }
 
 func main() {
@@ -114,6 +118,10 @@ func openDB(cfg config) (*sql.DB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 	defer cancel()
 
+	_, err = db.ExecContext(ctx, "SET GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+	if err != nil {
+		return nil, err
+	}
 
 	// use PingContext() to establish a new connection to database, passing in the
 	// context we created aboe as parameter. If the connection couldn't be
