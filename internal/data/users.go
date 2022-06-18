@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -410,6 +411,12 @@ func (m UserModel) CheckoutV2(shippingAddress *ShippingAddress, addressVariety S
 	var bookIds string
 	var bookQuantities string
 	l := len(carts)
+
+	// Deadlock prevention : sort cart data
+	sort.SliceStable(carts, func(i, j int) bool {
+		return carts[i].UpdatedEditedID < carts[j].UpdatedEditedID
+	})
+
 	for i := 0; i < l; i++ {
 		bookId := strconv.Itoa(int(carts[i].UpdatedEditedID))
 		bookIds += bookId
